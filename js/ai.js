@@ -1,19 +1,24 @@
 /**
  * js/ai.js - Intelligent AI Bot Opponent for Player 2
- * Evaluates mountain state, manages mana, aims right slingshot, and launches counters.
+ * Evaluates all 9 lanes, manages mana, and aims across the entire mountain arena.
  */
 
 window.AISystem = {
   decisionTimer: 0,
-  minInterval: 2.2, // seconds between decisions
-  maxInterval: 3.8,
+  minInterval: 2.2,
+  maxInterval: 3.6,
 
   init() {
-    this.decisionTimer = 1.5;
+    this.decisionTimer = 1.2;
   },
 
   update(dt) {
     if (!window.GameState.aiEnabled || window.GameState.isGameOver || !window.GameState.isStarted || window.GameState.isPaused) {
+      return;
+    }
+
+    // Do not run bot if in online multiplayer
+    if (window.Network && window.Network.isOnline) {
       return;
     }
 
@@ -26,63 +31,45 @@ window.AISystem = {
 
   makeMove() {
     const p2Mana = window.GameState.mana[1];
-    if (p2Mana < 2) return; // Need at least 2 mana to launch anything
+    if (p2Mana < 2) return;
 
     const p1Climbers = window.GameState.units.filter(u => u.player === 1 && u.hp > 0);
     const p2Climbers = window.GameState.units.filter(u => u.player === 2 && u.hp > 0);
 
-    // Strategy 1: Defense - If P1 has a climber that is high up the mountain (y < 420), target with a Bomb!
+    // Strategy 1: Defense - Target advancing enemy climbers with Bombs
     if (p1Climbers.length > 0 && Math.random() < 0.65) {
-      // Find highest P1 climber
+      // Find highest climber (closest to Row 0)
       p1Climbers.sort((a, b) => a.y - b.y);
       const threat = p1Climbers[0];
 
-      if (threat.y < 500) {
-        // Choose bomb
+      if (threat.y < 9) {
         const bombCards = window.GameConfig.CARDS.filter(c => c.kind === "bomb" && c.cost <= p2Mana);
         if (bombCards.length > 0) {
-          // Prefer Shock if not stunned, otherwise Basic or Area
-          let chosenBomb = bombCards.find(c => c.id === "shock") || bombCards[0];
-          // Slight aim imperfection for realistic human-like feel
-          const aimX = threat.x + (Math.random() * 30 - 15);
-          const aimY = threat.y + (Math.random() * 20 - 10);
+          const chosenBomb = (threat.y <= 3 && bombCards.find(c => c.id === "basic"))
+            || (threat.stunTimer <= 0 && bombCards.find(c => c.id === "shock"))
+            || bombCards[0];
 
-          const ok = window.SlingshotSystem.launchAI(2, chosenBomb, aimX, aimY);
+          const ok = window.SlingshotSystem.launchTarget(2, chosenBomb, threat.x, threat.y);
           if (ok) {
-            window.GameSystem?.updateStatus?.(`🤖 Bot launched ${chosenBomb.name} targeting Blue Climber!`);
+            window.GameSystem?.updateStatus?.(`🤖 Bot launched ${chosenBomb.name} targeting Blue Climber on Col ${threat.x}!`);
             return;
           }
         }
       }
     }
 
-    // Strategy 2: Offense - Deploy a Hiker (Scout, Knight, Sumo, Doctor)
+    // Strategy 2: Offense - Deploy a Hiker into an open lane in the bottom base camp (rows 12-14)
     const hikerCards = window.GameConfig.CARDS.filter(c => c.kind === "hiker" && c.cost <= p2Mana);
     if (hikerCards.length > 0) {
-      // Choose based on current team comp
-      let chosenHiker;
-      if (p2Climbers.length === 0) {
-        // Open with Scout or Knight
-        chosenHiker = hikerCards.find(c => c.id === "scout") || hikerCards[0];
-      } else {
-        // Randomly choose from affordable hikers
-        chosenHiker = hikerCards[Math.floor(Math.random() * hikerCards.length)];
-      }
+      let chosenHiker = hikerCards[Math.floor(Math.random() * hikerCards.length)];
 
-      // Aim at one of the mountain ledges or base camp
-      const targetLedges = [
-        { x: 1040, y: 640 }, // Tier 1 Right
-        { x: 970, y: 560 },  // Tier 2 Right
-        { x: 860, y: 630 },  // Tier 1 Mid Right
-        { x: 820, y: 530 }   // Tier 2 Mid Right
-      ];
-      const target = targetLedges[Math.floor(Math.random() * targetLedges.length)];
-      const aimX = target.x + (Math.random() * 20 - 10);
-      const aimY = target.y + (Math.random() * 15 - 5);
+      // Pick an open lane (prefer lanes without blockers)
+      const targetCol = Math.floor(Math.random() * window.GameConfig.GRID.COLS);
+      const targetRow = 12 + Math.floor(Math.random() * 3); // rows 12, 13, 14
 
-      const ok = window.SlingshotSystem.launchAI(2, chosenHiker, aimX, aimY);
+      const ok = window.SlingshotSystem.launchTarget(2, chosenHiker, targetCol, targetRow);
       if (ok) {
-        window.GameSystem?.updateStatus?.(`🤖 Bot launched ${chosenHiker.name} up the mountain!`);
+        window.GameSystem?.updateStatus?.(`🤖 Bot deployed ${chosenHiker.name} in Column ${targetCol}!`);
       }
     }
   }

@@ -20,20 +20,19 @@ html, body {
   justify-content: center;
 }
 
-/* 1536x1024 Scaled Game Container */
+/* 1920x1080 Virtual Canvas Container */
 #game-container {
   position: relative;
   width: 100vw;
   height: 100vh;
-  max-width: calc(100vh * (1536 / 1024));
-  max-height: calc(100vw * (1024 / 1536));
-  aspect-ratio: 1536 / 1024;
+  max-width: calc(100vh * (1920 / 1080));
+  max-height: calc(100vw * (1080 / 1920));
+  aspect-ratio: 1920 / 1080;
   overflow: hidden;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
   background: #1e293b;
 }
 
-/* Main Canvas Layer */
 #game-canvas {
   position: absolute;
   top: 0;
@@ -45,14 +44,14 @@ html, body {
 }
 
 /* ==========================================================================
-   TOP HUD: PLAYER 1 (BLUE) & PLAYER 2 (RED) BANNERS MATCHING slingshot.png
+   TOP HUD: PLAYER BANNERS & 8 SUMMIT FLAGS PROGRESS BAR
    ========================================================================== */
 #hud-top {
   position: absolute;
-  top: 1.8%;
+  top: 0.8%;
   left: 0;
   width: 100%;
-  padding: 0 2.2%;
+  padding: 0 1.8%;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -63,24 +62,22 @@ html, body {
 .player-hud {
   display: flex;
   flex-direction: column;
-  width: 25%;
-  min-width: 200px;
+  width: 22%;
+  min-width: 210px;
 }
 
-/* Ribbon Banner Headers */
 .ribbon-banner {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 38px;
+  height: 36px;
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: #ffffff;
   border-radius: 6px;
-  position: relative;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
@@ -94,27 +91,26 @@ html, body {
   border: 2px solid #ef4444;
 }
 
-/* Mana Meter Box */
 .mana-box {
   display: flex;
   align-items: center;
   background: rgba(15, 23, 42, 0.9);
   border-radius: 10px;
-  padding: 6px 12px;
-  margin-top: 6px;
+  padding: 5px 12px;
+  margin-top: 5px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.12);
   gap: 10px;
 }
 
 .mana-icon {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .mana-track {
   flex: 1;
-  height: 16px;
+  height: 15px;
   background: #090d16;
   border-radius: 8px;
   overflow: hidden;
@@ -141,13 +137,13 @@ html, body {
 .mana-text {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 15px;
-  min-width: 48px;
+  font-size: 14px;
+  min-width: 44px;
   text-align: right;
   color: #f1f5f9;
 }
 
-/* Top Center Status HUD */
+/* Center HUD Info */
 #hud-center {
   display: flex;
   flex-direction: column;
@@ -155,42 +151,135 @@ html, body {
   gap: 4px;
 }
 
-.match-timer {
+.top-bar-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.game-timer {
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
-  font-size: 14px;
+  font-size: 13px;
   background: rgba(15, 23, 42, 0.85);
-  padding: 4px 14px;
-  border-radius: 14px;
+  padding: 3px 12px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  letter-spacing: 0.5px;
+}
+
+.net-status-pill {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 3px 10px;
+  border-radius: 10px;
+  border: 1px solid #475569;
+  color: #94a3b8;
+}
+
+.net-status-pill.connected {
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.net-status-pill.waiting {
+  border-color: #eab308;
+  color: #fde047;
+}
+
+/* ==========================================================================
+   8 SUMMIT FLAGS PROGRESS BAR
+   ========================================================================== */
+#summit-flags-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(6px);
+  padding: 5px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  margin-top: 2px;
+}
+
+.flag-score-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.p1-score-box { color: #38bdf8; }
+.p2-score-box { color: #f87171; }
+
+.team-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.p1-dot { background: #0284c7; box-shadow: 0 0 6px #38bdf8; }
+.p2-dot { background: #e11d48; box-shadow: 0 0 6px #f87171; }
+
+.flags-track {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.flag-slot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 1.5px solid #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: all 0.2s ease;
+}
+
+.flag-slot.claimed-p1 {
+  background: rgba(2, 132, 199, 0.3);
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+}
+
+.flag-slot.claimed-p2 {
+  background: rgba(225, 29, 72, 0.3);
+  border-color: #fb7185;
+  box-shadow: 0 0 8px rgba(251, 113, 133, 0.7);
 }
 
 .status-pill {
   font-size: 11px;
   font-weight: 600;
   background: rgba(15, 23, 42, 0.75);
-  padding: 3px 10px;
+  padding: 3px 12px;
   border-radius: 10px;
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 
 /* ==========================================================================
-   BOTTOM DOCK: BOMBS & HIKERS SLOTS MATCHING slingshot.png
+   BOTTOM DOCK: BOMBS & HIKERS (Positioned safely below the mountain arena)
    ========================================================================== */
 #dock-bottom {
   position: absolute;
-  bottom: 3.5%;
+  bottom: 1.2%;
   left: 50%;
   transform: translateX(-50%);
-  width: 68%;
-  max-width: 1040px;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(10px);
+  width: 56%;
+  max-width: 900px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
   border: 2px solid #334155;
-  border-radius: 20px;
-  padding: 12px 20px 14px 20px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  border-radius: 16px;
+  padding: 6px 14px 8px 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -202,7 +291,7 @@ html, body {
   width: 100%;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: 10px;
 }
 
 .dock-section {
@@ -212,38 +301,36 @@ html, body {
   flex: 1;
 }
 
-/* Category Headers (BOMBS / HIKERS) */
 .category-tab {
   background: #1e3a8a;
   border: 1px solid #3b82f6;
-  border-radius: 8px;
-  padding: 4px 34px;
+  border-radius: 6px;
+  padding: 2px 22px;
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: #ffffff;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .cards-row {
   display: flex;
-  gap: 10px;
+  gap: 7px;
   justify-content: center;
   width: 100%;
 }
 
-/* Card Slot */
 .dock-card {
-  width: 68px;
-  height: 98px;
+  width: 58px;
+  height: 82px;
   background: #f8fafc;
   border: 2px solid #cbd5e1;
-  border-radius: 12px;
+  border-radius: 10px;
   position: relative;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   pointer-events: auto;
 }
@@ -275,24 +362,23 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 2px 5px 2px;
+  padding: 3px 2px 4px 2px;
   position: relative;
 }
 
-/* Circular Blue Mana Cost Badge */
 .cost-badge {
   position: absolute;
-  top: 4px;
-  right: 5px;
-  width: 18px;
-  height: 18px;
+  top: 3px;
+  right: 4px;
+  width: 17px;
+  height: 17px;
   background: #0284c7;
   border: 1px solid #ffffff;
   border-radius: 50%;
   color: #ffffff;
   font-family: 'Outfit', sans-serif;
   font-weight: 900;
-  font-size: 11px;
+  font-size: 10.5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -300,40 +386,57 @@ html, body {
 }
 
 .card-img {
-  width: 44px;
-  height: 48px;
+  width: 36px;
+  height: 40px;
   object-fit: contain;
-  margin-top: 14px;
+  margin-top: 11px;
   pointer-events: none;
 }
 
 .card-label {
   font-family: 'Fredoka', sans-serif;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   color: #1e293b;
   text-align: center;
   white-space: nowrap;
 }
 
-/* Vertical Divider between BOMBS and HIKERS */
 .dock-divider {
   width: 2px;
-  height: 90px;
+  height: 74px;
   background: #334155;
-  margin-top: 28px;
+  margin-top: 20px;
+}
+
+#dock-instruction {
+  font-size: 10.5px;
+  color: #94a3b8;
+  margin-top: 4px;
+  text-align: center;
 }
 
 /* ==========================================================================
-   BOTTOM CONTROLS & RESET BUTTON MATCHING slingshot.png
+   CONTROLS BAR (LEFT & RIGHT) - Positioned in open side sky above slingshots
    ========================================================================== */
-#controls-right {
+#controls-left {
   position: absolute;
-  bottom: 3.5%;
-  right: 2.2%;
+  top: 9%;
+  left: 1.5%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+#controls-right {
+  position: absolute;
+  top: 9%;
+  right: 1.5%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   align-items: flex-end;
   z-index: 10;
   pointer-events: auto;
@@ -344,13 +447,13 @@ html, body {
   color: #f8fafc;
   border: 2px solid #475569;
   border-radius: 8px;
-  padding: 8px 18px;
+  padding: 7px 14px;
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.5px;
   cursor: pointer;
-  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+  transition: all 0.12s;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
@@ -360,16 +463,23 @@ html, body {
   transform: translateY(-2px);
 }
 
-.btn-game:active {
-  transform: translateY(0);
+.btn-start {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.btn-stop {
+  background: #e11d48;
+  border-color: #fb7185;
+  color: #ffffff;
 }
 
 .btn-reset {
   background: #0f172a;
   border-color: #334155;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
-  letter-spacing: 1px;
 }
 
 .btn-toggle.active {
@@ -377,16 +487,10 @@ html, body {
   border-color: #38bdf8;
 }
 
-/* Instructions tooltip at bottom */
-#dock-instruction {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 6px;
-  text-align: center;
-}
+.hidden { display: none !important; }
 
 /* ==========================================================================
-   VICTORY MODAL
+   MODALS: SETTINGS, ONLINE LOBBY, VICTORY
    ========================================================================== */
 .modal-overlay {
   position: absolute;
@@ -406,51 +510,215 @@ html, body {
 .modal-card {
   background: #0f172a;
   border: 2px solid #38bdf8;
-  border-radius: 20px;
-  padding: 32px 44px;
-  text-align: center;
+  border-radius: 18px;
+  padding: 24px 30px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: popIn 0.25s ease-out;
+  max-width: 580px;
+  width: 90%;
 }
 
 @keyframes popIn {
-  from { transform: scale(0.85); opacity: 0; }
+  from { transform: scale(0.9); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 
-.trophy-icon {
-  font-size: 64px;
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 10px;
+}
+
+.modal-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: #38bdf8;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.settings-section {
+  margin-bottom: 14px;
+}
+
+.settings-label {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: block;
+  color: #e2e8f0;
+}
+
+.settings-select, .settings-input {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.settings-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.settings-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cards-cost-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.cost-item {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px;
+  text-align: center;
+}
+
+.cost-name {
+  font-size: 10px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.cost-input {
+  text-align: center;
+  padding: 3px;
+  font-weight: 800;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  border-top: 1px solid #334155;
+  padding-top: 12px;
+}
+
+/* Online Lobby Tabs & Panels */
+.lobby-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.room-code-box {
+  background: #1e293b;
+  border: 2px dashed #0284c7;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.room-code-display {
+  font-family: 'Outfit', monospace;
+  font-size: 26px;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 3px;
+}
+
+.share-link-box {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.share-link-box input {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.join-input-group {
+  display: flex;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
-.victory-title {
-  font-family: 'Outfit', sans-serif;
-  font-size: 28px;
-  font-weight: 900;
-  margin-bottom: 8px;
-}
-
-.victory-desc {
-  font-size: 16px;
-  color: #cbd5e1;
-  margin-bottom: 24px;
-}
-
-.btn-primary {
-  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
-  border: none;
+.join-input-group input {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  padding: 8px 12px;
   color: #ffffff;
-  padding: 12px 32px;
-  font-family: 'Outfit', sans-serif;
-  font-size: 16px;
-  font-weight: 900;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
-  transition: transform 0.12s, box-shadow 0.12s;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.6);
+.lobby-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.lobby-status-msg {
+  font-size: 12px;
+  margin-top: 8px;
+}
+.lobby-status-msg.waiting { color: #fde047; }
+.lobby-status-msg.success { color: #4ade80; }
+.lobby-status-msg.error { color: #f87171; }
+
+.trophy-icon { font-size: 54px; margin-bottom: 8px; }
+.victory-title { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
+.victory-desc { font-size: 14px; color: #cbd5e1; margin-bottom: 18px; }
+.btn-primary {
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 8px 20px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
 }

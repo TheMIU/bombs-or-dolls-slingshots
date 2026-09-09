@@ -1,5 +1,5 @@
 /**
- * js/state.js - Game State Container & Entity Storage for Slingshots Edition
+ * js/state.js - Game State Container & Data Accessors for Slingshots Edition
  */
 
 window.GameState = {
@@ -15,26 +15,28 @@ window.GameState = {
     window.GameConfig.MANA.START
   ],
 
+  // 8 Summit Flags: 0 = neutral, 1 = Player 1 (Blue), 2 = Player 2 (Red)
+  flags: [0, 0, 0, 0, 0, 0, 0, 0],
+
   // Currently loaded card in each player's slingshot: [CardObj or null, CardObj or null]
   loadedCard: [null, null],
 
   // Active flying projectiles launched from slingshots
   projectiles: [],
 
-  // Active hikers currently climbing the mountain
+  // Active hikers climbing the 9 lanes: Array of Hiker
   units: [],
 
-  // Active bombs ticking or on ledges
+  // Active bombs ticking or on cells: Array of Bomb
   bombs: [],
 
-  // Visual effects (explosions, smoke trails, floating damage text)
+  // Visual effects
   particles: [],
   floatingTexts: [],
 
-  // AI Opponent enabled for Player 2 (default ON for single player)
+  // AI Opponent enabled for Player 2
   aiEnabled: true,
 
-  // Unique ID generator
   _nextId: 1,
   getNextId() {
     return this._nextId++;
@@ -50,6 +52,7 @@ window.GameState = {
       window.GameConfig.MANA.START,
       window.GameConfig.MANA.START
     ];
+    this.flags = [0, 0, 0, 0, 0, 0, 0, 0];
     this.loadedCard = [null, null];
     this.projectiles = [];
     this.units = [];
@@ -58,7 +61,31 @@ window.GameState = {
     this.floatingTexts = [];
   },
 
-  // Helper to add floating combat text
+  getUnitAt(x, y) {
+    return this.units.find(u => u.x === x && u.y === y && u.hp > 0);
+  },
+
+  getUnitsInRadius(x, y, radius) {
+    return this.units.filter(u => {
+      if (u.hp <= 0) return false;
+      const dx = Math.abs(u.x - x);
+      const dy = Math.abs(u.y - y);
+      return dx <= radius && dy <= radius;
+    });
+  },
+
+  getBombAt(x, y) {
+    return this.bombs.find(b => b.x === x && b.y === y);
+  },
+
+  isCellBlocked(x, y, hikerPlayer) {
+    const occupant = this.getUnitAt(x, y);
+    if (!occupant) return false;
+    if (occupant.player === hikerPlayer) return true;
+    if (occupant.card.isBlocker) return true;
+    return false;
+  },
+
   addFloatingText(x, y, text, color = "#ffffff", size = 18) {
     this.floatingTexts.push({
       x: x + (Math.random() * 20 - 10),
@@ -72,8 +99,7 @@ window.GameState = {
     });
   },
 
-  // Helper to spawn explosion particle burst
-  addExplosionParticles(x, y, color = "#f97316", count = 24) {
+  addExplosionParticles(x, y, color = "#f97316", count = 30) {
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 60 + Math.random() * 240;
@@ -91,7 +117,6 @@ window.GameState = {
     }
   },
 
-  // Helper to spawn smoke puff behind flying projectile
   addSmokeParticle(x, y, color = "rgba(255, 255, 255, 0.4)") {
     this.particles.push({
       x: x + (Math.random() * 6 - 3),

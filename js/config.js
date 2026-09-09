@@ -1,59 +1,112 @@
 /**
  * js/config.js - Game Configuration & Balance Parameters for Slingshots Edition
+ * Updated to match the new 1920x1080 background and repositioned slingshots:
+ * - 1920x1080 Virtual Canvas Resolution
+ * - 9 Columns x 8 Rows Mountain Grid (X: 444 to 1516, Y: 128 to 1080)
+ * - Row 0: Peak Summit with 8 Flags and Central Trophy
+ * - Rows 6-7: Base Camp deployment zone (level with slingshots)
+ * - Left Slingshot (P1): x=268, y=885
+ * - Right Slingshot (P2): x=1660, y=885
  */
 
 window.GameConfig = {
-  // Virtual resolution of the game arena (matching slingshot.png)
+  // 1920x1080 Full HD Virtual Canvas
   CANVAS: {
-    WIDTH: 1536,
-    HEIGHT: 1024,
-    GRAVITY: 980 // pixels / sec^2 for realistic ballistic arc
+    WIDTH: 1920,
+    HEIGHT: 1080,
+    GRAVITY: 1100
+  },
+
+  // 9x8 Grid Layout - Centered mountain, leaving bottom clear for cards dock
+  GRID: {
+    COLS: 9,
+    ROWS: 8,
+    X_START: 465,
+    X_END: 1455,
+    Y_START: 120,
+    Y_END: 840,
+    get COL_WIDTH() { return (this.X_END - this.X_START) / this.COLS; }, // 110.0px
+    get ROW_HEIGHT() { return (this.Y_END - this.Y_START) / this.ROWS; } // 90.0px
+  },
+
+  // Mountain & Arena Configuration
+  ARENA: {
+    peakRow: 0,                   // Summit Peak at Row 0
+    climbDirection: -1,           // Both players climb upwards (y decreases toward 0)
+    deployRows: [6, 7],           // Unified bottom base camp (Rows 6-7, all 9 columns)
+    flagCols: [0, 1, 2, 3, 5, 6, 7, 8], // 8 summit flag columns (col 4 has summit trophy)
+    trophyCol: 4
   },
 
   // Mana parameters
   MANA: {
     MAX: 10,
     START: 10,
-    REGEN_PER_SECOND: 0.40 // ~2.5s per mana point
+    REGEN_PER_SECOND: 0.35 // ~2.8s per 1 mana point
   },
 
-  // Slingshot Physics & Positions
+  speedMultiplier: 1.0,
+
+  // Baseline climb speeds (seconds per vertical row step)
+  BASE_SPEEDS: {
+    scout: 2.2,
+    sumo: 5.0,
+    knight: 3.2,
+    doctor: 3.8
+  },
+
+  // Slingshot Physics & Positions (Mounted on simple-shape stone bastions)
   SLINGSHOTS: {
-    // Left Slingshot (Player 1 - Blue)
     P1: {
       id: 1,
-      x: 236,
-      y: 486,
-      prongLeft: { x: 198, y: 448 },
-      prongRight: { x: 275, y: 448 },
-      restX: 236,
-      restY: 486,
-      maxPull: 110,
-      launchSpeedMultiplier: 9.5, // pixels/sec per pixel of pull
+      x: 270,
+      y: 720,
+      prongLeft: { x: 220, y: 645 },
+      prongRight: { x: 320, y: 645 },
+      restX: 270,
+      restY: 685,
+      maxPull: 140,
+      launchSpeedMultiplier: 9.5, // Less sensitive, smooth deliberate aiming across all 9 columns
       teamColor: "#0284c7",
       teamColorGlow: "rgba(56, 189, 248, 0.4)",
-      bandColor: "#854d0e",
+      bandColor: "#92400e",
       pouchColor: "#451a03"
     },
-    // Right Slingshot (Player 2 - Red)
     P2: {
       id: 2,
-      x: 1300,
-      y: 486,
-      prongLeft: { x: 1262, y: 448 },
-      prongRight: { x: 1338, y: 448 },
-      restX: 1300,
-      restY: 486,
-      maxPull: 110,
+      x: 1650,
+      y: 720,
+      prongLeft: { x: 1600, y: 645 },
+      prongRight: { x: 1700, y: 645 },
+      restX: 1650,
+      restY: 685,
+      maxPull: 140,
       launchSpeedMultiplier: 9.5,
       teamColor: "#e11d48",
       teamColorGlow: "rgba(251, 113, 133, 0.4)",
-      bandColor: "#854d0e",
+      bandColor: "#92400e",
       pouchColor: "#451a03"
     }
   },
 
-  // Card Definitions matching slingshot.png
+  getDefaultSettings() {
+    return {
+      startMana: 10,
+      regenRate: 0.35,
+      speedMultiplier: 1.0,
+      cardCosts: {
+        scout: 2,
+        knight: 3,
+        sumo: 4,
+        doctor: 3,
+        basic: 2,
+        timer: 3,
+        area: 4,
+        shock: 4
+      }
+    };
+  },
+
   CARDS: [
     // --- BOMBS ---
     {
@@ -62,11 +115,11 @@ window.GameConfig = {
       category: "bombs",
       name: "Basic Bomb",
       cost: 2,
-      damage: 75,
-      blastRadius: 80,
+      damage: 80,
+      blastRadius: 90,
       sprite: "assets/sprite_basic_bomb.png",
       cardImg: "assets/card_basic_bomb.png",
-      description: "Direct impact blast dealing 75 damage to enemy climbers."
+      description: "Direct impact blast dealing 80 damage. Can strike anywhere on the mountain."
     },
     {
       id: "timer",
@@ -74,12 +127,12 @@ window.GameConfig = {
       category: "bombs",
       name: "Timer Bomb",
       cost: 3,
-      fuseSec: 3.0,
-      damage: 90,
-      blastRadius: 110,
+      fuseSec: 3.5,
+      damage: 85,
+      blastRadius: 120,
       sprite: "assets/sprite_timer_bomb.png",
       cardImg: "assets/card_timer_bomb.png",
-      description: "Lands on ledge and ticks for 3.0s before a devastating 90 damage explosion."
+      description: "Delayed blast: sticks and detonates after 3.5s dealing 85 damage in 3x3."
     },
     {
       id: "area",
@@ -87,11 +140,11 @@ window.GameConfig = {
       category: "bombs",
       name: "Area Bomb",
       cost: 4,
-      damage: 55,
-      blastRadius: 140,
+      damage: 50,
+      blastRadius: 150,
       sprite: "assets/sprite_area_bomb.png",
       cardImg: "assets/card_area_bomb.png",
-      description: "Massive cluster blast hitting multiple ledges with 55 damage."
+      description: "Quick explosive wave dealing 50 damage across multiple lanes."
     },
     {
       id: "shock",
@@ -101,10 +154,10 @@ window.GameConfig = {
       cost: 4,
       damage: 20,
       stunDurationSec: 4.0,
-      blastRadius: 120,
+      blastRadius: 130,
       sprite: "assets/sprite_shock_bomb.png",
       cardImg: "assets/card_shock_bomb.png",
-      description: "Electric EMP wave that zaps and freezes enemy climbers for 4.0 seconds."
+      description: "Zaps enemy units, freezing and disabling them for 4.0 seconds."
     },
 
     // --- HIKERS ---
@@ -113,128 +166,120 @@ window.GameConfig = {
       kind: "hiker",
       category: "hikers",
       name: "Scout",
+      role: "Fast Climber",
       cost: 2,
-      hp: 50,
-      maxHp: 50,
-      climbSpeed: 65, // pixels / second along climbing path
+      hp: 45,
+      maxHp: 45,
+      stepIntervalSec: 2.2,
       sprite: "assets/sprite_scout.png",
       cardImg: "assets/card_scout.png",
-      description: "Agile, lightweight climber with fastest climbing speed."
+      description: "Low health, fastest climber for racing toward summit flags."
     },
     {
       id: "knight",
       kind: "hiker",
       category: "hikers",
       name: "Knight",
+      role: "Combat Striker",
       cost: 3,
-      hp: 85,
-      maxHp: 85,
-      climbSpeed: 42,
+      hp: 75,
+      maxHp: 75,
+      stepIntervalSec: 3.2,
       attackDamage: 22,
       attackCooldownSec: 1.6,
-      attackRange: 60,
+      attackRange: 1,
       sprite: "assets/sprite_knight.png",
       cardImg: "assets/card_knight.png",
-      description: "Armed melee fighter with sword slashes to defeat nearby enemy hikers."
+      description: "Attacks nearby enemy climbers with melee slashes."
     },
     {
       id: "sumo",
       kind: "hiker",
       category: "hikers",
       name: "Sumo",
+      role: "Tank / Blocker",
       cost: 4,
-      hp: 140,
-      maxHp: 140,
-      climbSpeed: 28,
+      hp: 120,
+      maxHp: 120,
+      stepIntervalSec: 5.0,
       isBlocker: true,
       sprite: "assets/sprite_sumo.png",
       cardImg: "assets/card_sumo.png",
-      description: "Massive 140 HP tank armor that blocks enemy climbers from overtaking."
+      description: "Huge 120 HP pool with Heavy Armor. Cannot be one-shot by bombs and blocks enemies."
     },
     {
       id: "doctor",
       kind: "hiker",
       category: "hikers",
       name: "Doctor",
+      role: "Support Healer",
       cost: 3,
-      hp: 60,
-      maxHp: 60,
-      climbSpeed: 38,
-      healAmount: 18,
+      hp: 50,
+      maxHp: 50,
+      stepIntervalSec: 3.8,
+      healAmount: 16,
       healCooldownSec: 2.0,
-      healRange: 80,
+      healRange: 1,
       sprite: "assets/sprite_doctor.png",
       cardImg: "assets/card_doctor.png",
-      description: "Passively radiates healing aura (+18 HP) to wounded friendly climbers."
+      description: "Passively heals damaged friendly climbers nearby."
     }
   ],
 
-  // Summit Peak capture coordinate (x, y)
-  SUMMIT_PEAK: {
-    x: 768,
-    y: 110,
-    flagX: 772,
-    flagY: 48,
-    radius: 45
+  applySettings(s, persist = true) {
+    if (!s) return;
+
+    if (typeof s.startMana === "number") {
+      this.MANA.START = Math.max(1, Math.min(10, s.startMana));
+    }
+
+    if (typeof s.regenRate === "number") {
+      this.MANA.REGEN_PER_SECOND = Math.max(0.1, Math.min(2.0, s.regenRate));
+    }
+
+    if (typeof s.speedMultiplier === "number") {
+      this.speedMultiplier = Math.max(0.4, Math.min(3.0, s.speedMultiplier));
+      this.CARDS.forEach(card => {
+        if (card.kind === "hiker" && this.BASE_SPEEDS[card.id]) {
+          card.stepIntervalSec = parseFloat((this.BASE_SPEEDS[card.id] / this.speedMultiplier).toFixed(2));
+        }
+      });
+    }
+
+    if (s.cardCosts && typeof s.cardCosts === "object") {
+      this.CARDS.forEach(card => {
+        if (typeof s.cardCosts[card.id] === "number") {
+          card.cost = Math.max(1, Math.min(10, s.cardCosts[card.id]));
+        }
+      });
+    }
+
+    if (persist) {
+      try {
+        localStorage.setItem("bod_slingshot_settings", JSON.stringify({
+          startMana: this.MANA.START,
+          regenRate: this.MANA.REGEN_PER_SECOND,
+          speedMultiplier: this.speedMultiplier,
+          cardCosts: this.getCurrentCosts()
+        }));
+      } catch (e) {}
+    }
   },
 
-  // Mountain Climbing Path & Waypoints
-  // Waypoints form a directed graph of ledges and ladders climbing up to the Summit Peak
-  MOUNTAIN_WAYPOINTS: [
-    // Tier 0 - Ground Base Camps
-    { id: "base_left", x: 420, y: 720, tier: 0, next: ["tier1_left"] },
-    { id: "base_mid", x: 768, y: 720, tier: 0, next: ["tier1_mid_left", "tier1_mid_right"] },
-    { id: "base_right", x: 1110, y: 720, tier: 0, next: ["tier1_right"] },
+  getCurrentCosts() {
+    const costs = {};
+    this.CARDS.forEach(c => { costs[c.id] = c.cost; });
+    return costs;
+  },
 
-    // Tier 1 - Lower Mountain Terraces
-    { id: "tier1_left", x: 480, y: 640, tier: 1, next: ["tier2_left"] },
-    { id: "tier1_mid_left", x: 670, y: 630, tier: 1, next: ["tier2_mid_left"] },
-    { id: "tier1_mid_right", x: 860, y: 630, tier: 1, next: ["tier2_mid_right"] },
-    { id: "tier1_right", x: 1040, y: 640, tier: 1, next: ["tier2_right"] },
-
-    // Tier 2 - Mid Terraces & Wooden Scaffolding Base
-    { id: "tier2_left", x: 540, y: 550, tier: 2, next: ["tier3_left_scaffold"] },
-    { id: "tier2_mid_left", x: 710, y: 530, tier: 2, next: ["tier3_center"] },
-    { id: "tier2_mid_right", x: 820, y: 530, tier: 2, next: ["tier3_center"] },
-    { id: "tier2_right", x: 970, y: 560, tier: 2, next: ["tier3_right_scaffold"] },
-
-    // Tier 3 - Scaffolding Platforms & Mid Cliffs
-    { id: "tier3_left_scaffold", x: 570, y: 440, tier: 3, next: ["tier4_left"] },
-    { id: "tier3_center", x: 768, y: 420, tier: 3, next: ["tier4_left", "tier4_right"] },
-    { id: "tier3_right_scaffold", x: 940, y: 450, tier: 3, next: ["tier4_right"] },
-
-    // Tier 4 - Upper Mountain & Ladders
-    { id: "tier4_left", x: 680, y: 310, tier: 4, next: ["tier5_subsummit"] },
-    { id: "tier4_right", x: 860, y: 310, tier: 4, next: ["tier5_subsummit"] },
-
-    // Tier 5 - Sub-summit High Ridge
-    { id: "tier5_subsummit", x: 768, y: 220, tier: 5, next: ["summit"] },
-
-    // Peak Summit (Victory Flag)
-    { id: "summit", x: 768, y: 110, tier: 6, next: [] }
-  ],
-
-  // Mountain Ledges (horizontal ground surfaces where climbers walk or bombs land)
-  MOUNTAIN_LEDGES: [
-    // Base line
-    { x1: 300, x2: 1240, y: 720, tier: 0 },
-    // Tier 1
-    { x1: 440, x2: 560, y: 640, tier: 1 },
-    { x1: 630, x2: 900, y: 630, tier: 1 },
-    { x1: 980, x2: 1100, y: 640, tier: 1 },
-    // Tier 2
-    { x1: 500, x2: 600, y: 550, tier: 2 },
-    { x1: 660, x2: 870, y: 530, tier: 2 },
-    { x1: 920, x2: 1020, y: 560, tier: 2 },
-    // Tier 3
-    { x1: 530, x2: 620, y: 440, tier: 3 },
-    { x1: 710, x2: 830, y: 420, tier: 3 },
-    { x1: 900, x2: 990, y: 450, tier: 3 },
-    // Tier 4
-    { x1: 640, x2: 740, y: 310, tier: 4 },
-    { x1: 800, x2: 900, y: 310, tier: 4 },
-    // Tier 5 & Summit
-    { x1: 720, x2: 820, y: 220, tier: 5 },
-    { x1: 740, x2: 796, y: 110, tier: 6 }
-  ]
+  loadSavedSettings() {
+    try {
+      const saved = localStorage.getItem("bod_slingshot_settings");
+      if (saved) {
+        this.applySettings(JSON.parse(saved), false);
+      }
+    } catch (e) {}
+  }
 };
+
+window.GameConfig.loadSavedSettings();

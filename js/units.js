@@ -1,166 +1,157 @@
 /**
- * js/units.js - Hiker Unit Spawning, Mountain Climbing, Combat, and Healing Logic
+ * js/units.js - Hiker Unit Logic, Climbing, Sumo Blocker, Combat, and Summit Flag Claims
  */
 
 window.UnitSystem = {
-  /**
-   * Spawn a new hiker upon projectile landing
-   */
-  spawnHiker(player, card, landX, landY) {
-    const nearestWp = window.MountainSystem.findNearestWaypoint(landX, landY);
-    const targetWp = window.MountainSystem.getNextWaypoint(nearestWp.id) || nearestWp;
+  spawnHiker(player, card, col, row) {
+    const pos = window.MountainSystem.gridToPixel(col, row);
 
     const hiker = {
       id: window.GameState.getNextId(),
       player: player,
       card: card,
-      x: landX,
-      y: landY,
-      targetWaypoint: targetWp,
+      x: col,
+      y: row,
+      renderX: pos.x,
+      renderY: pos.y,
       hp: card.hp,
       maxHp: card.maxHp,
-      climbSpeed: card.climbSpeed,
+      stepTimer: 0,
       stunTimer: 0,
       actionCooldown: 0,
       isBlocked: false
     };
 
     window.GameState.units.push(hiker);
-    window.GameState.addFloatingText(landX, landY, "CLIMB! ⛰️", player === 1 ? "#38bdf8" : "#fb7185");
+    window.GameState.addFloatingText(pos.x, pos.y, "CLIMB! ⛰️", player === 1 ? "#38bdf8" : "#fb7185");
     window.SoundFX.playLand();
     return hiker;
   },
 
-  /**
-   * Main real-time update loop for all climbers
-   */
-  update(dt, now) {
+  update(dt) {
     const state = window.GameState;
-    const peak = window.GameConfig.SUMMIT_PEAK;
+    const peakRow = window.GameConfig.ARENA.peakRow;
 
     for (let i = 0; i < state.units.length; i++) {
       const u = state.units[i];
       if (u.hp <= 0) continue;
 
-      // 1. Check Stun Timer
+      // 1. Stunned check
       if (u.stunTimer > 0) {
         u.stunTimer -= dt;
-        continue; // Stunned climbers cannot move or act
-      }
-
-      // 2. Role Special Abilities (Attack / Heal)
-      this.handleRoleAbilities(u, dt);
-
-      // 3. Check Collision / Blocker
-      u.isBlocked = this.checkIfBlocked(u);
-      if (u.isBlocked) {
         continue;
       }
 
-      // 4. Movement along Mountain Climbing Waypoints
+      // 2. Role Abilities
+      this.handleRoleAbilities(u, dt);
+
+      // 3. Movement Step (Bottom to Top)
       this.handleMovement(u, dt);
 
-      // 5. Check Summit Peak Arrival
-      const distToPeak = Math.hypot(u.x - peak.x, u.y - peak.y);
-      if (distToPeak < peak.radius) {
-        window.GameSystem?.triggerVictory?.(u.player, u);
-        return;
+      // 4. Smooth visual render coordinate lerp
+      const targetPos = window.MountainSystem.gridToPixel(u.x, u.y);
+      u.renderX += (targetPos.x - u.renderX) * Math.min(1, dt * 12);
+      u.renderY += (targetPos.y - u.renderY) * Math.min(1, dt * 12);
+
+      // 5. Reached Summit Peak (Row 0)
+      if (u.y <= peakRow) {
+        window.GameSystem?.claimSummitFlag?.(u.player, u);
+        u.hp = 0; // Finishes climbing
+        window.GameState.addFloatingText(u.renderX, u.renderY, "SUMMIT! 🚩", u.player === 1 ? "#38bdf8" : "#fb7185");
+        window.GameState.addExplosionParticles(u.renderX, u.renderY, u.player === 1 ? "#38bdf8" : "#f43f5e");
       }
     }
 
-    // Clean up defeated units
     state.units = state.units.filter(u => u.hp > 0);
   },
 
-  /**
-   * Check if an enemy Sumo or blocker is obstructing this hiker
-   */
-  checkIfBlocked(hiker) {
-    const units = window.GameState.units;
-    for (const other of units) {
-      if (other.id === hiker.id || other.hp <= 0 || other.player === hiker.player) continue;
-
-      // Check distance
-      const dist = Math.hypot(other.x - hiker.x, other.y - hiker.y);
-      if (dist < 40) {
-        // If other unit is Sumo, this hiker is blocked
-        if (other.card.isBlocker) {
-          return true;
-        }
-      }
-    }
-    return false;
-  },
-
-  /**
-   * Move hiker towards its current target waypoint
-   */
-  handleMovement(u, dt) {
-    if (!u.targetWaypoint) return;
-
-    const dx = u.targetWaypoint.x - u.x;
-    const dy = u.targetWaypoint.y - u.y;
-    const dist = Math.hypot(dx, dy);
-
-    if (dist < 12) {
-      // Arrived at current waypoint -> get next one up the mountain
-      const next = window.MountainSystem.getNextWaypoint(u.targetWaypoint.id);
-      if (next) {
-        u.targetWaypoint = next;
-      }
-    } else {
-      // Step towards waypoint
-      const step = u.climbSpeed * dt;
-      u.x += (dx / dist) * step;
-      u.y += (dy / dist) * step;
-    }
-  },
-
-  /**
-   * Knight Melee Slash and Doctor Healing Aura
-   */
-  handleRoleAbilities(u, dt) {
-    if (u.actionCooldown > 0) {
-      u.actionCooldown -= dt;
+  handleRoleAbilities(unit, dt) {
+    if (unit.actionCooldown > 0) {
+      unit.actionCooldown -= dt;
     }
 
-    // 1. Knight: Melee Sword Slash
-    if (u.card.attackDamage && u.actionCooldown <= 0) {
-      const enemies = window.GameState.units.filter(other => {
-        if (other.player === u.player || other.hp <= 0) return false;
-        return Math.hypot(other.x - u.x, other.y - u.y) <= u.card.attackRange;
-      });
+    // Knight: Melee attack
+    if (unit.card.attackDamage && unit.actionCooldown <= 0) {
+      const enemies = window.GameState.getUnitsInRadius(unit.x, unit.y, unit.card.attackRange || 1)
+        .filter(t => t.player !== unit.player && t.hp > 0);
 
       if (enemies.length > 0) {
-        // Target lowest HP enemy
         enemies.sort((a, b) => a.hp - b.hp);
         const target = enemies[0];
-        target.hp -= u.card.attackDamage;
-        u.actionCooldown = u.card.attackCooldownSec;
+        target.hp -= unit.card.attackDamage;
+        unit.actionCooldown = unit.card.attackCooldownSec;
 
-        window.GameState.addFloatingText(target.x, target.y, `-${u.card.attackDamage}⚔️`, "#ef4444");
-        window.GameState.addExplosionParticles(target.x, target.y, "#94a3b8", 8);
+        window.GameState.addFloatingText(target.renderX, target.renderY, `-${unit.card.attackDamage}⚔️`, "#ef4444");
+        window.GameState.addExplosionParticles(target.renderX, target.renderY, "#94a3b8", 8);
         window.SoundFX.playSlash();
       }
     }
 
-    // 2. Doctor: Healing Aura
-    if (u.card.healAmount && u.actionCooldown <= 0) {
-      const woundedAllies = window.GameState.units.filter(other => {
-        if (other.player !== u.player || other.hp <= 0 || other.hp >= other.maxHp) return false;
-        return Math.hypot(other.x - u.x, other.y - u.y) <= u.card.healRange;
-      });
+    // Doctor: Healing aura
+    if (unit.card.healAmount && unit.actionCooldown <= 0) {
+      const allies = window.GameState.getUnitsInRadius(unit.x, unit.y, unit.card.healRange || 1)
+        .filter(a => a.player === unit.player && a.hp < a.maxHp && a.hp > 0);
 
-      if (woundedAllies.length > 0) {
-        woundedAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
-        const target = woundedAllies[0];
-        const healed = Math.min(u.card.healAmount, target.maxHp - target.hp);
+      if (allies.length > 0) {
+        allies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+        const target = allies[0];
+        const healed = Math.min(unit.card.healAmount, target.maxHp - target.hp);
         target.hp += healed;
-        u.actionCooldown = u.card.healCooldownSec;
+        unit.actionCooldown = unit.card.healCooldownSec;
 
-        window.GameState.addFloatingText(target.x, target.y, `+${healed}❤️`, "#22c55e");
+        window.GameState.addFloatingText(target.renderX, target.renderY, `+${healed}❤️`, "#22c55e");
         window.SoundFX.playHeal();
       }
     }
+  },
+
+  handleMovement(unit, dt) {
+    unit.stepTimer += dt;
+    if (unit.stepTimer < unit.card.stepIntervalSec) return;
+
+    const climbDir = window.GameConfig.ARENA.climbDirection; // -1 (upward)
+    const targetY = unit.y + climbDir;
+    if (targetY < 0) return;
+
+    const targetOccupant = window.GameState.getUnitAt(unit.x, targetY);
+
+    if (targetOccupant) {
+      // Friendly unit ahead -> try side dodge or wait
+      if (targetOccupant.player === unit.player) {
+        const sideDodge = this.trySideDodge(unit, targetY);
+        if (sideDodge) {
+          unit.x = sideDodge.x;
+          unit.y = sideDodge.y;
+          unit.stepTimer = 0;
+        }
+        return;
+      }
+
+      // Sumo Hiker blocks enemy from advancing!
+      if (targetOccupant.card.isBlocker) {
+        unit.isBlocked = true;
+        unit.stepTimer = 0;
+        return;
+      }
+    }
+
+    unit.isBlocked = false;
+    unit.y = targetY;
+    unit.stepTimer = 0;
+  },
+
+  trySideDodge(unit, targetY) {
+    const cols = [unit.x - 1, unit.x + 1].filter(c => c >= 0 && c < window.GameConfig.GRID.COLS);
+    cols.sort(() => Math.random() - 0.5);
+
+    for (const c of cols) {
+      if (!window.GameState.isCellBlocked(c, targetY, unit.player)) {
+        return { x: c, y: targetY };
+      }
+      if (!window.GameState.isCellBlocked(c, unit.y, unit.player)) {
+        return { x: c, y: unit.y };
+      }
+    }
+    return null;
   }
 };
