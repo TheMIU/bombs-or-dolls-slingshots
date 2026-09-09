@@ -41,7 +41,11 @@ window.SlingshotSystem = {
     };
 
     const handleDown = (e) => {
-      if (window.GameState.isGameOver || window.GameState.isPaused || !window.GameState.isStarted) return;
+      if (window.GameState.isGameOver || window.GameState.isPaused) return;
+
+      if (!window.GameState.isStarted) {
+        window.GameSystem?.startMatch?.();
+      }
 
       const pos = getCanvasPos(e);
       const W = window.GameConfig.CANVAS.WIDTH;

@@ -164,15 +164,14 @@ window.Network = {
     const defaultCard = window.GameConfig.CARDS.find(c => c.id === "scout");
     window.GameState.loadedCard = [defaultCard, defaultCard];
 
-    window.GameSystem?.resetMatch?.();
-    window.GameSystem?.startMatch?.(false);
+    // Local reset only - DO NOT broadcast RESET packet (avoids infinite loop)
+    window.GameSystem?.resetMatch?.(true);
     window.GameSystem?.renderDockCards?.();
-    window.GameSystem?.updateStatus?.("Connected to Player 2! MATCH STARTED! Drag anywhere to aim & launch!");
+    window.GameSystem?.updateStatus?.("Player 2 joined! You are Player 1 (Blue). Click ▶ Start Match or drag anywhere to launch!");
 
     this.send({
       type: "WELCOME",
       assignedPlayer: 2,
-      isStarted: true,
       mana: window.GameState.mana,
       flags: window.GameState.flags,
       config: {
@@ -321,10 +320,9 @@ window.Network = {
         const defaultCard = window.GameConfig.CARDS.find(c => c.id === "scout");
         window.GameState.loadedCard = [defaultCard, defaultCard];
 
-        window.GameSystem?.resetMatch?.(true);
-        window.GameSystem?.startMatch?.(true);
+        window.GameSystem?.resetMatch?.(true); // Local reset only - DO NOT broadcast
         window.GameSystem?.renderDockCards?.();
-        window.GameSystem?.updateStatus?.("Connected to Host! MATCH STARTED! You are Player 2 (Red). Drag anywhere to aim & launch!");
+        window.GameSystem?.updateStatus?.("Connected to Host! You are Player 2 (Red). Click ▶ Start Match or drag anywhere to launch!");
         break;
       }
 
@@ -334,17 +332,18 @@ window.Network = {
       }
 
       case "START_MATCH": {
-        window.GameSystem?.startMatch?.(true);
+        window.GameSystem?.startMatch?.(true); // Local start only - DO NOT re-broadcast
         break;
       }
 
       case "STOP_MATCH": {
-        window.GameSystem?.stopMatch?.(true);
+        window.GameSystem?.stopMatch?.(true); // Local stop only - DO NOT re-broadcast
         break;
       }
 
       case "RESET": {
-        window.GameSystem?.resetMatch?.();
+        window.GameSystem?.resetMatch?.(true); // Local reset only - DO NOT re-broadcast
+        window.GameSystem?.updateStatus?.("Opponent restarted the match.");
         break;
       }
 
