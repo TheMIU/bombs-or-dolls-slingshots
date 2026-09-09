@@ -1,6 +1,10 @@
 /**
- * js/slingshot.js - Full-Field Slingshot Aiming & Launch Engine
- * Calibrated for new slingshot positions: P1 at (268, 885), P2 at (1660, 885)
+ * js/slingshot.js - Full-Field Slingshot Aiming, Precision Ballistics & Cancel Engine
+ * - Smooth drag anywhere on screen (P1 left slingshot at (270, 685), P2 right slingshot at (1650, 685))
+ * - Full coverage of all 9 columns (0 to 8) including the opponent's far end side
+ * - Full row targeting (Rows 0-7 for Bombs, Rows 6-7 for Hikers)
+ * - Intuitive Drag Cancel: drag back into neutral zone (< 24px) shows "❌ RELEASE TO CANCEL"
+ * - Instant Cancel via ESC key, Right-Click, or Multi-touch (tapping second finger)
  */
 
 window.SlingshotSystem = {
@@ -12,6 +16,7 @@ window.SlingshotSystem = {
   currentDragY: 0,
   pullVector: { x: 0, y: 0 },
   pullDistance: 0,
+  CANCEL_THRESHOLD: 24, // Pull distance < 24 virtual px = Cancel Zone
 
   wobble: [
     { amp: 0, angle: 0, decay: 0.9 }, // P1
@@ -43,6 +48,14 @@ window.SlingshotSystem = {
     const handleDown = (e) => {
       if (window.GameState.isGameOver || window.GameState.isPaused) return;
 
+      // Multi-touch cancel: tapping with a second finger cancels active drag
+      if (e.touches && e.touches.length > 1) {
+        if (this.isDragging) {
+          this.cancelDrag("Aim cancelled.");
+        }
+        return;
+      }
+
       if (!window.GameState.isStarted) {
         window.GameSystem?.startMatch?.();
       }
@@ -70,6 +83,12 @@ window.SlingshotSystem = {
 
     const handleMove = (e) => {
       if (!this.isDragging || !this.activePlayer) return;
+
+      if (e.touches && e.touches.length > 1) {
+        this.cancelDrag("Aim cancelled.");
+        return;
+      }
+
       const pos = getCanvasPos(e);
       this.currentDragX = pos.x;
       this.currentDragY = pos.y;
@@ -80,8 +99,19 @@ window.SlingshotSystem = {
     const handleUp = (e) => {
       if (!this.isDragging || !this.activePlayer) return;
       this.release(this.activePlayer);
-      this.isDragging = false;
-      this.activePlayer = null;
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && this.isDragging) {
+        this.cancelDrag("Aim cancelled via Escape.");
+      }
+    };
+
+    const handleContextMenu = (e) => {
+      if (this.isDragging) {
+        e.preventDefault();
+        this.cancelDrag("Aim cancelled via right-click.");
+      }
     };
 
     canvas.addEventListener("mousedown", handleDown);
@@ -91,6 +121,9 @@ window.SlingshotSystem = {
     canvas.addEventListener("touchstart", handleDown, { passive: false });
     window.addEventListener("touchmove", handleMove, { passive: false });
     window.addEventListener("touchend", handleUp);
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("contextmenu", handleContextMenu);
   },
 
   startDrag(player, pos) {
@@ -129,30 +162,108 @@ window.SlingshotSystem = {
     this.pullVector = { x: dx, y: dy };
     this.pullDistance = dist;
 
-    if (dist > 15 && Math.random() < 0.2) {
+    if (dist > this.CANCEL_THRESHOLD && Math.random() < 0.15) {
       window.SoundFX.playStretch(dist / cfg.maxPull);
     }
   },
 
-  release(player) {
-    const card = window.GameState.loadedCard[player - 1];
-    if (!card) return;
+  cancelDrag(reason = "Aim cancelled.") {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    this.activePlayer = null;
+    this.pullVector = { x: 0, y: 0 };
+    this.pullDistance = 0;
 
+    window.SoundFX?.playCancel?.();
+    window.GameSystem?.updateStatus?.(reason);
+  },
+
+  /**
+   * Translates the pull vector (pullX, pullY) smoothly into a target mountain grid cell.
+   * Full coverage: covers from Column 0 all the way to Column 8 (opponent's end side)
+   */
+  calculateAimTarget(player, pullX, pullY, cardKind) {
+    let targetCol = 0;
+    let targetRow = 7;
+
+    // Horizontal Column targeting:
+    // P1: Pulling left (pullX < 0) stretches slingshot back to shoot RIGHT towards cols 0..8
+    // P2: Pulling right (pullX > 0) stretches slingshot back to shoot LEFT towards cols 8..0
+    if (player === 1) {
+      const px = -pullX; // Positive when pulled left
+      const frac = Math.max(0, Math.min(1, (px - 14) / 106));
+      targetCol = Math.min(8, Math.max(0, Math.floor(frac * 9)));
+    } else {
+      const px = pullX; // Positive when pulled right
+      const frac = Math.max(0, Math.min(1, (px - 14) / 106));
+      targetCol = Math.min(8, Math.max(0, 8 - Math.floor(frac * 9)));
+    }
+
+    // Vertical Row targeting:
+    if (cardKind === "hiker") {
+      // Hikers deploy strictly at base camp (Row 6 or Row 7)
+      targetRow = pullY > 15 ? 6 : 7;
+    } else {
+      // Bombs can target any row (Row 0 Peak to Row 7 Base)
+      // Pulling down (pullY > 0) aims higher up towards Peak (Row 0)
+      // Pulling level/up (pullY <= 0) aims towards bottom ledges (Row 7)
+      const frac = Math.max(0, Math.min(1, (pullY + 35) / 115));
+      targetRow = Math.min(7, Math.max(0, 7 - Math.floor(frac * 8)));
+    }
+
+    const targetPos = window.MountainSystem.gridToPixel(targetCol, targetRow);
+    return { col: targetCol, row: targetRow, x: targetPos.x, y: targetPos.y };
+  },
+
+  /**
+   * Computes the exact ballistic physics required to land on (targetCol, targetRow)
+   */
+  calculateTrajectory(player, targetCol, targetRow) {
     const cfg = player === 1 ? window.GameConfig.SLINGSHOTS.P1 : window.GameConfig.SLINGSHOTS.P2;
-    const dist = this.pullDistance;
+    const targetPos = window.MountainSystem.gridToPixel(targetCol, targetRow);
+    const g = window.GameConfig.CANVAS.GRAVITY;
+    const dx = targetPos.x - cfg.restX;
+    const dy = targetPos.y - cfg.restY;
 
-    if (dist < 15) return;
+    // Flight time scales naturally with horizontal distance (0.70s to 1.38s)
+    const distX = Math.abs(dx);
+    const flightTime = Math.max(0.70, Math.min(1.38, 0.45 + (distX / 1400) * 0.90));
+    const vx = dx / flightTime;
+    const vy = (dy - 0.5 * g * flightTime * flightTime) / flightTime;
 
-    const currentMana = window.GameState.mana[player - 1];
-    if (currentMana < card.cost) {
-      window.GameSystem?.updateStatus?.(`Player ${player}: Not enough mana! (${card.cost}⚡ needed)`);
+    return { vx, vy, flightTime, targetPos };
+  },
+
+  release(player) {
+    if (!this.isDragging || !player) return;
+
+    // 1. Cancel check: if released in the neutral cancel zone, cancel cleanly
+    if (this.pullDistance < this.CANCEL_THRESHOLD) {
+      this.cancelDrag("Drag cancelled. Card kept ready!");
       return;
     }
 
-    window.GameState.mana[player - 1] -= card.cost;
+    const card = window.GameState.loadedCard[player - 1];
+    if (!card) {
+      this.cancelDrag();
+      return;
+    }
 
-    const vx = -this.pullVector.x * cfg.launchSpeedMultiplier;
-    const vy = -this.pullVector.y * cfg.launchSpeedMultiplier;
+    const cfg = player === 1 ? window.GameConfig.SLINGSHOTS.P1 : window.GameConfig.SLINGSHOTS.P2;
+    const currentMana = window.GameState.mana[player - 1];
+    if (currentMana < card.cost) {
+      window.GameSystem?.updateStatus?.(`Player ${player}: Not enough mana! (${card.cost}⚡ needed)`);
+      this.cancelDrag();
+      return;
+    }
+
+    // 2. Compute exact aim destination and trajectory
+    const aim = this.calculateAimTarget(player, this.pullVector.x, this.pullVector.y, card.kind);
+    const traj = this.calculateTrajectory(player, aim.col, aim.row);
+    const targetPos = traj.targetPos;
+
+    // Deduct mana
+    window.GameState.mana[player - 1] -= card.cost;
 
     const proj = {
       id: window.GameState.getNextId(),
@@ -160,21 +271,29 @@ window.SlingshotSystem = {
       card: card,
       x: cfg.restX + this.pullVector.x,
       y: cfg.restY + this.pullVector.y,
-      vx: vx,
-      vy: vy,
+      vx: traj.vx,
+      vy: traj.vy,
       gravity: window.GameConfig.CANVAS.GRAVITY,
       flightTime: 0,
+      maxFlightTime: traj.flightTime,
+      targetCol: aim.col,
+      targetRow: aim.row,
+      targetX: targetPos.x,
+      targetY: targetPos.y,
       trailTimer: 0
     };
     window.GameState.projectiles.push(proj);
 
+    // Online multiplayer synchronization
     if (window.Network && window.Network.isOnline) {
       window.Network.send({
         type: "LAUNCH",
         player: player,
         cardId: card.id,
         pullX: this.pullVector.x,
-        pullY: this.pullVector.y
+        pullY: this.pullVector.y,
+        targetCol: aim.col,
+        targetRow: aim.row
       });
     }
 
@@ -183,27 +302,45 @@ window.SlingshotSystem = {
 
     window.GameState.loadedCard[player - 1] = null;
     window.GameSystem?.updateCardsUI?.();
-    window.GameSystem?.updateStatus?.(`Player ${player} launched ${card.name}!`);
+    window.GameSystem?.updateStatus?.(`Player ${player} launched ${card.name} → Col ${aim.col}, Row ${aim.row}!`);
+
+    this.isDragging = false;
+    this.activePlayer = null;
+    this.pullVector = { x: 0, y: 0 };
+    this.pullDistance = 0;
   },
 
-  launchRemote(player, card, pullX, pullY) {
+  launchRemote(player, card, pullX, pullY, remoteCol, remoteRow) {
     const cfg = player === 1 ? window.GameConfig.SLINGSHOTS.P1 : window.GameConfig.SLINGSHOTS.P2;
     if (window.GameState.mana[player - 1] < card.cost) return false;
     window.GameState.mana[player - 1] -= card.cost;
 
-    const vx = -pullX * cfg.launchSpeedMultiplier;
-    const vy = -pullY * cfg.launchSpeedMultiplier;
+    let targetCol = remoteCol;
+    let targetRow = remoteRow;
+    if (targetCol === undefined || targetRow === undefined) {
+      const aim = this.calculateAimTarget(player, pullX, pullY, card.kind);
+      targetCol = aim.col;
+      targetRow = aim.row;
+    }
+
+    const traj = this.calculateTrajectory(player, targetCol, targetRow);
+    const targetPos = traj.targetPos;
 
     window.GameState.projectiles.push({
       id: window.GameState.getNextId(),
       player: player,
       card: card,
-      x: cfg.restX + pullX,
-      y: cfg.restY + pullY,
-      vx: vx,
-      vy: vy,
+      x: cfg.restX + (pullX || 0),
+      y: cfg.restY + (pullY || 0),
+      vx: traj.vx,
+      vy: traj.vy,
       gravity: window.GameConfig.CANVAS.GRAVITY,
       flightTime: 0,
+      maxFlightTime: traj.flightTime,
+      targetCol: targetCol,
+      targetRow: targetRow,
+      targetX: targetPos.x,
+      targetY: targetPos.y,
       trailTimer: 0
     });
 
@@ -215,20 +352,32 @@ window.SlingshotSystem = {
   launchTarget(player, card, targetCol, targetRow) {
     const cfg = player === 1 ? window.GameConfig.SLINGSHOTS.P1 : window.GameConfig.SLINGSHOTS.P2;
     if (window.GameState.mana[player - 1] < card.cost) return false;
+    window.GameState.mana[player - 1] -= card.cost;
 
-    const targetPos = window.MountainSystem.gridToPixel(targetCol, targetRow);
-    const g = window.GameConfig.CANVAS.GRAVITY;
-    const dx = targetPos.x - cfg.restX;
-    const dy = targetPos.y - cfg.restY;
+    const traj = this.calculateTrajectory(player, targetCol, targetRow);
+    const targetPos = traj.targetPos;
 
-    const flightTime = Math.max(0.65, Math.min(1.4, Math.abs(dx) / 580));
-    const vx = dx / flightTime;
-    const vy = (dy - 0.5 * g * flightTime * flightTime) / flightTime;
+    window.GameState.projectiles.push({
+      id: window.GameState.getNextId(),
+      player: player,
+      card: card,
+      x: cfg.restX,
+      y: cfg.restY,
+      vx: traj.vx,
+      vy: traj.vy,
+      gravity: window.GameConfig.CANVAS.GRAVITY,
+      flightTime: 0,
+      maxFlightTime: traj.flightTime,
+      targetCol: targetCol,
+      targetRow: targetRow,
+      targetX: targetPos.x,
+      targetY: targetPos.y,
+      trailTimer: 0
+    });
 
-    const pullX = -vx / cfg.launchSpeedMultiplier;
-    const pullY = -vy / cfg.launchSpeedMultiplier;
-
-    return this.launchRemote(player, card, pullX, pullY);
+    window.SoundFX.playRelease();
+    this.wobble[player - 1].amp = 20;
+    return true;
   },
 
   update(dt) {
@@ -304,9 +453,13 @@ window.SlingshotSystem = {
         }
       }
 
-      // Trajectory Arc & Target Grid Cell Highlight
-      if (isCurrentDrag && this.pullDistance > 15) {
-        this.renderTrajectory(ctx, p, pouchX, pouchY, loaded);
+      // Trajectory Arc & Target Grid Cell Highlight OR Cancel Zone
+      if (isCurrentDrag) {
+        if (this.pullDistance < this.CANCEL_THRESHOLD) {
+          this.renderCancelIndicator(ctx, p, pouchX, pouchY);
+        } else {
+          this.renderTrajectory(ctx, p, pouchX, pouchY, loaded);
+        }
       }
 
       ctx.restore();
@@ -417,65 +570,173 @@ window.SlingshotSystem = {
     ctx.restore();
   },
 
+  /**
+   * Renders the cancel indicator when dragging inside the neutral cancel zone (< 24px)
+   */
+  renderCancelIndicator(ctx, player, pouchX, pouchY) {
+    ctx.save();
+
+    const now = Date.now() / 1000;
+    const pulse = 1 + 0.12 * Math.sin(now * 8);
+
+    // Cancel zone circular aura around the resting pouch / touch start
+    ctx.fillStyle = "rgba(239, 68, 68, 0.22)";
+    ctx.beginPath();
+    ctx.arc(pouchX, pouchY, this.CANCEL_THRESHOLD * 1.5 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.arc(pouchX, pouchY, this.CANCEL_THRESHOLD * 1.5 * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Glowing badge pill
+    const badgeW = 200;
+    const badgeH = 46;
+    const badgeX = pouchX - badgeW / 2;
+    const badgeY = pouchY - 60;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+    ctx.strokeStyle = "#ef4444";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 15px Outfit, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("❌ RELEASE TO CANCEL", pouchX, badgeY + 20);
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "11px Outfit, sans-serif";
+    ctx.fillText("Drag further out to aim", pouchX, badgeY + 36);
+
+    ctx.restore();
+  },
+
+  /**
+   * Renders the full ballistic trajectory arc and highlighted target grid cell
+   */
   renderTrajectory(ctx, player, startX, startY, card) {
-    const cfg = player === 1 ? window.GameConfig.SLINGSHOTS.P1 : window.GameConfig.SLINGSHOTS.P2;
-    const vx = -this.pullVector.x * cfg.launchSpeedMultiplier;
-    const vy = -this.pullVector.y * cfg.launchSpeedMultiplier;
+    const aim = this.calculateAimTarget(player, this.pullVector.x, this.pullVector.y, card ? card.kind : "bomb");
+    const traj = this.calculateTrajectory(player, aim.col, aim.row);
     const g = window.GameConfig.CANVAS.GRAVITY;
 
-    const timeStep = 0.05;
-    const maxSteps = 32;
-
-    let impactPoint = null;
-
     ctx.save();
-    for (let step = 1; step <= maxSteps; step++) {
-      const t = step * timeStep;
-      const nextX = startX + vx * t;
-      const nextY = startY + vy * t + 0.5 * g * t * t;
-      const currentVy = vy + g * t;
 
-      const check = window.MountainSystem.checkImpact(nextX, nextY, currentVy, card ? card.kind : "bomb");
-      if (check.hit) {
-        impactPoint = check;
-        break;
-      }
+    // 1. Dotted parabolic trajectory arc from pouch to target cell
+    const stepDt = 0.035;
+    const totalSteps = Math.min(65, Math.ceil(traj.flightTime / stepDt));
 
-      const alpha = 1.0 - (step / maxSteps) * 0.6;
-      const radius = Math.max(3, 6 - (step / maxSteps) * 3);
+    for (let step = 1; step <= totalSteps; step++) {
+      const t = Math.min(traj.flightTime, step * stepDt);
+      const nextX = startX + traj.vx * t;
+      const nextY = startY + traj.vy * t + 0.5 * g * t * t;
+
+      const progress = step / totalSteps;
+      const alpha = 0.4 + 0.6 * (1 - progress * 0.5);
+      const radius = Math.max(3.5, 7.5 - progress * 3.5);
 
       ctx.beginPath();
       ctx.arc(nextX, nextY, radius, 0, Math.PI * 2);
       ctx.fillStyle = player === 1 ? `rgba(56, 189, 248, ${alpha})` : `rgba(251, 113, 133, ${alpha})`;
       ctx.fill();
+
+      // Outer glow for first few dots
+      if (step <= 8) {
+        ctx.fillStyle = player === 1 ? "rgba(56, 189, 248, 0.25)" : "rgba(251, 113, 133, 0.25)";
+        ctx.beginPath();
+        ctx.arc(nextX, nextY, radius + 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
-    // Target Grid Cell Highlight
-    if (impactPoint) {
-      const grid = window.GameConfig.GRID;
-      const cellX = grid.X_START + impactPoint.col * grid.COL_WIDTH;
-      const cellY = grid.Y_START + impactPoint.row * grid.ROW_HEIGHT;
+    // 2. Target Grid Cell Highlight
+    const grid = window.GameConfig.GRID;
+    const cellX = grid.X_START + aim.col * grid.COL_WIDTH;
+    const cellY = grid.Y_START + aim.row * grid.ROW_HEIGHT;
 
-      ctx.fillStyle = player === 1 ? "rgba(56, 189, 248, 0.3)" : "rgba(244, 63, 94, 0.3)";
-      ctx.fillRect(cellX, cellY, grid.COL_WIDTH, grid.ROW_HEIGHT);
+    // Shaded cell background
+    ctx.fillStyle = player === 1 ? "rgba(56, 189, 248, 0.32)" : "rgba(244, 63, 94, 0.32)";
+    ctx.fillRect(cellX, cellY, grid.COL_WIDTH, grid.ROW_HEIGHT);
 
-      ctx.strokeStyle = player === 1 ? "#38bdf8" : "#f43f5e";
-      ctx.lineWidth = 3;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(cellX, cellY, grid.COL_WIDTH, grid.ROW_HEIGHT);
-      ctx.setLineDash([]);
+    // Animated dashed outline
+    const dashOffset = (Date.now() / 40) % 16;
+    ctx.strokeStyle = player === 1 ? "#38bdf8" : "#f43f5e";
+    ctx.lineWidth = 3;
+    ctx.lineDashOffset = -dashOffset;
+    ctx.setLineDash([8, 4]);
+    ctx.strokeRect(cellX, cellY, grid.COL_WIDTH, grid.ROW_HEIGHT);
+    ctx.setLineDash([]);
 
-      ctx.beginPath();
-      ctx.arc(impactPoint.x, impactPoint.y, 18, 0, Math.PI * 2);
-      ctx.strokeStyle = player === 1 ? "#38bdf8" : "#fb7185";
-      ctx.lineWidth = 3;
-      ctx.stroke();
+    // Target reticle at cell center
+    const now = Date.now() / 1000;
+    const pulse = 1 + 0.08 * Math.sin(now * 10);
+    const reticleR = 20 * pulse;
 
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 14px Outfit, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(`Col ${impactPoint.col} • Row ${impactPoint.row}`, impactPoint.x, impactPoint.y - 24);
-    }
+    ctx.strokeStyle = player === 1 ? "#38bdf8" : "#fb7185";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(aim.x, aim.y, reticleR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Crosshairs
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(aim.x - reticleR - 6, aim.y); ctx.lineTo(aim.x + reticleR + 6, aim.y);
+    ctx.moveTo(aim.x, aim.y - reticleR - 6); ctx.lineTo(aim.x, aim.y + reticleR + 6);
+    ctx.stroke();
+
+    // Center target dot
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(aim.x, aim.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Target Info Badge
+    const badgeText = `🎯 Col ${aim.col} • Row ${aim.row}${card ? ` • ${card.name}` : ""}`;
+    ctx.font = "bold 13px Outfit, sans-serif";
+    const textW = ctx.measureText(badgeText).width;
+    const badgeW = textW + 28;
+    const badgeH = 28;
+    const badgeX = Math.max(grid.X_START, Math.min(grid.X_END - badgeW, aim.x - badgeW / 2));
+    const badgeY = cellY - 34;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.90)";
+    ctx.strokeStyle = player === 1 ? "#38bdf8" : "#fb7185";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + 19);
+
+    // Cancel hint bar at top center of arena
+    const hintText = "💡 Drag to aim • Pull back to origin or press ESC / Right-Click to Cancel";
+    ctx.font = "12px Outfit, sans-serif";
+    const hintW = ctx.measureText(hintText).width + 32;
+    const hintX = 960 - hintW / 2;
+    const hintY = 75;
+
+    ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(hintX, hintY, hintW, 26, 13);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#cbd5e1";
+    ctx.textAlign = "center";
+    ctx.fillText(hintText, 960, hintY + 17);
 
     ctx.restore();
   }

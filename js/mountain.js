@@ -34,30 +34,17 @@ window.MountainSystem = {
   checkImpact(x, y, vy, cardKind) {
     const grid = window.GameConfig.GRID;
 
-    // Check if entered grid area moving downward
-    if (y >= grid.Y_START && y <= grid.Y_END + 20 && vy > 0) {
-      const { col, row } = this.pixelToGrid(x, y);
-
-      // If Hiker: lands in the bottom deployment base camp (rows 6-7)
-      if (cardKind === "hiker") {
-        if (row >= 6) {
-          const pos = this.gridToPixel(col, row);
-          return { hit: true, col, row, x: pos.x, y: pos.y };
-        } else if (y >= grid.Y_START + 5 * grid.ROW_HEIGHT) {
-          const pos = this.gridToPixel(col, 6);
-          return { hit: true, col, row: 6, x: pos.x, y: pos.y };
-        }
-      }
-      // If Bomb: can strike anywhere on the mountain (rows 0-7)
-      else if (cardKind === "bomb") {
-        if (row >= 0 && row <= 7) {
-          const pos = this.gridToPixel(col, row);
-          return { hit: true, col, row, x: pos.x, y: pos.y };
-        }
+    // Hikers: land when descending into base camp (rows 6-7, y >= Y_START + 6 * ROW_HEIGHT)
+    if (cardKind === "hiker") {
+      if (y >= grid.Y_START + 6 * grid.ROW_HEIGHT && vy > 0) {
+        const { col, row } = this.pixelToGrid(x, y);
+        const deployRow = Math.max(6, Math.min(7, row));
+        const pos = this.gridToPixel(col, deployRow);
+        return { hit: true, col, row: deployRow, x: pos.x, y: pos.y };
       }
     }
 
-    // Ground floor boundary
+    // Bombs & Units: ground floor boundary impact at bottom of arena
     if (y >= grid.Y_END) {
       const { col } = this.pixelToGrid(x, y);
       const row = 7;

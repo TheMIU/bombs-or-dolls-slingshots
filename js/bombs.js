@@ -33,11 +33,25 @@ window.BombSystem = {
         continue;
       }
 
-      // Check impact against mountain grid
-      const impact = window.MountainSystem.checkImpact(p.x, p.y, p.vy, p.card.kind);
-      if (impact.hit) {
-        this.handleImpact(p, impact.col, impact.row, impact.x, impact.y);
-        toRemove.push(p.id);
+      // Check target destination arrival
+      if (p.targetCol !== undefined && p.targetRow !== undefined && p.maxFlightTime) {
+        const reachedTarget = p.flightTime >= p.maxFlightTime ||
+          (p.vy > 0 && Math.hypot(p.x - p.targetX, p.y - p.targetY) < 36) ||
+          (p.vy > 0 && p.y >= p.targetY && Math.abs(p.x - p.targetX) < 55);
+
+        if (reachedTarget) {
+          this.handleImpact(p, p.targetCol, p.targetRow, p.targetX, p.targetY);
+          toRemove.push(p.id);
+          continue;
+        }
+      } else {
+        // Fallback impact check against mountain grid
+        const impact = window.MountainSystem.checkImpact(p.x, p.y, p.vy, p.card.kind);
+        if (impact.hit) {
+          this.handleImpact(p, impact.col, impact.row, impact.x, impact.y);
+          toRemove.push(p.id);
+          continue;
+        }
       }
     }
 

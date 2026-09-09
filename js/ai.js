@@ -65,7 +65,7 @@ window.AISystem = {
 
       // Pick an open lane (prefer lanes without blockers)
       const targetCol = Math.floor(Math.random() * window.GameConfig.GRID.COLS);
-      const targetRow = 12 + Math.floor(Math.random() * 3); // rows 12, 13, 14
+      const targetRow = 6 + Math.floor(Math.random() * 2); // rows 6 or 7 (Base Camp)
 
       const ok = window.SlingshotSystem.launchTarget(2, chosenHiker, targetCol, targetRow);
       if (ok) {

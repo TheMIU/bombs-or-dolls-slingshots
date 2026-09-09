@@ -296,7 +296,7 @@ window.Network = {
       case "LAUNCH": {
         const card = window.GameConfig.CARDS.find(c => c.id === data.cardId);
         if (card) {
-          window.SlingshotSystem.launchRemote(data.player, card, data.pullX, data.pullY);
+          window.SlingshotSystem.launchRemote(data.player, card, data.pullX, data.pullY, data.targetCol, data.targetRow);
         }
         break;
       }
