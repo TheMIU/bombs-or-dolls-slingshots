@@ -1,0 +1,456 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Outfit:wght@400;600;800;900&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b0f19;
+  font-family: 'Fredoka', 'Outfit', sans-serif;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 1536x1024 Scaled Game Container */
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: calc(100vh * (1536 / 1024));
+  max-height: calc(100vw * (1024 / 1536));
+  aspect-ratio: 1536 / 1024;
+  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.8);
+  background: #1e293b;
+}
+
+/* Main Canvas Layer */
+#game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* ==========================================================================
+   TOP HUD: PLAYER 1 (BLUE) & PLAYER 2 (RED) BANNERS MATCHING slingshot.png
+   ========================================================================== */
+#hud-top {
+  position: absolute;
+  top: 1.8%;
+  left: 0;
+  width: 100%;
+  padding: 0 2.2%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.player-hud {
+  display: flex;
+  flex-direction: column;
+  width: 25%;
+  min-width: 200px;
+}
+
+/* Ribbon Banner Headers */
+.ribbon-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #ffffff;
+  border-radius: 6px;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.p1-ribbon {
+  background: linear-gradient(180deg, #1d4ed8 0%, #1e40af 100%);
+  border: 2px solid #3b82f6;
+}
+
+.p2-ribbon {
+  background: linear-gradient(180deg, #b91c1c 0%, #991b1b 100%);
+  border: 2px solid #ef4444;
+}
+
+/* Mana Meter Box */
+.mana-box {
+  display: flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 10px;
+  padding: 6px 12px;
+  margin-top: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  gap: 10px;
+}
+
+.mana-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mana-track {
+  flex: 1;
+  height: 16px;
+  background: #090d16;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+.mana-fill {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.15s ease-out;
+}
+
+.p1-mana-fill {
+  background: linear-gradient(90deg, #0284c7, #38bdf8);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+}
+
+.p2-mana-fill {
+  background: linear-gradient(90deg, #dc2626, #f87171);
+  box-shadow: 0 0 10px rgba(248, 113, 113, 0.8);
+}
+
+.mana-text {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  min-width: 48px;
+  text-align: right;
+  color: #f1f5f9;
+}
+
+/* Top Center Status HUD */
+#hud-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.match-timer {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 4px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  letter-spacing: 0.5px;
+}
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.75);
+  padding: 3px 10px;
+  border-radius: 10px;
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   BOTTOM DOCK: BOMBS & HIKERS SLOTS MATCHING slingshot.png
+   ========================================================================== */
+#dock-bottom {
+  position: absolute;
+  bottom: 3.5%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 68%;
+  max-width: 1040px;
+  background: rgba(15, 23, 42, 0.94);
+  backdrop-filter: blur(10px);
+  border: 2px solid #334155;
+  border-radius: 20px;
+  padding: 12px 20px 14px 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+}
+
+.dock-content {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.dock-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+/* Category Headers (BOMBS / HIKERS) */
+.category-tab {
+  background: #1e3a8a;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 4px 34px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin-bottom: 10px;
+}
+
+.cards-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Card Slot */
+.dock-card {
+  width: 68px;
+  height: 98px;
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  pointer-events: auto;
+}
+
+.dock-card:hover:not(.disabled) {
+  transform: translateY(-4px);
+  border-color: #38bdf8;
+  box-shadow: 0 8px 18px rgba(56, 189, 248, 0.4);
+}
+
+.dock-card.loaded {
+  border-color: #0284c7;
+  border-width: 3px;
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.6), 0 10px 22px rgba(2, 132, 199, 0.5);
+  background: #ffffff;
+}
+
+.dock-card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+.card-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px 5px 2px;
+  position: relative;
+}
+
+/* Circular Blue Mana Cost Badge */
+.cost-badge {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 18px;
+  height: 18px;
+  background: #0284c7;
+  border: 1px solid #ffffff;
+  border-radius: 50%;
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.card-img {
+  width: 44px;
+  height: 48px;
+  object-fit: contain;
+  margin-top: 14px;
+  pointer-events: none;
+}
+
+.card-label {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1e293b;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Vertical Divider between BOMBS and HIKERS */
+.dock-divider {
+  width: 2px;
+  height: 90px;
+  background: #334155;
+  margin-top: 28px;
+}
+
+/* ==========================================================================
+   BOTTOM CONTROLS & RESET BUTTON MATCHING slingshot.png
+   ========================================================================== */
+#controls-right {
+  position: absolute;
+  bottom: 3.5%;
+  right: 2.2%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.btn-game {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 2px solid #475569;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.btn-game:hover {
+  background: #334155;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+}
+
+.btn-game:active {
+  transform: translateY(0);
+}
+
+.btn-reset {
+  background: #0f172a;
+  border-color: #334155;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.btn-toggle.active {
+  background: #0369a1;
+  border-color: #38bdf8;
+}
+
+/* Instructions tooltip at bottom */
+#dock-instruction {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   VICTORY MODAL
+   ========================================================================== */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 15, 25, 0.85);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-card {
+  background: #0f172a;
+  border: 2px solid #38bdf8;
+  border-radius: 20px;
+  padding: 32px 44px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.trophy-icon {
+  font-size: 64px;
+  margin-bottom: 12px;
+}
+
+.victory-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.victory-desc {
+  font-size: 16px;
+  color: #cbd5e1;
+  margin-bottom: 24px;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  border: none;
+  color: #ffffff;
+  padding: 12px 32px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.6);
+}

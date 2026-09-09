@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Bombs or Dolls - Slingshots Edition</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="game-container">
+  <!-- Top HUD: Player 1 (Blue) and Player 2 (Red) Banners matching slingshot.png -->
+  <header id="hud-top">
+    <!-- Player 1 (Blue) -->
+    <div class="player-hud">
+      <div class="ribbon-banner p1-ribbon">Player 1</div>
+      <div class="mana-box">
+        <span class="mana-icon" title="Water/Mana">💧</span>
+        <div class="mana-track">
+          <div id="p1-mana-fill" class="mana-fill p1-mana-fill" style="width: 100%;"></div>
+        </div>
+        <span id="p1-mana-text" class="mana-text">10 / 10</span>
+      </div>
+    </div>
+
+    <!-- Center Match Status & Timer -->
+    <div id="hud-center">
+      <div id="match-timer" class="match-timer">⏱️ 00:00</div>
+      <div id="game-status" class="status-pill">Pull slingshot back & aim for the summit!</div>
+    </div>
+
+    <!-- Player 2 (Red) -->
+    <div class="player-hud">
+      <div class="ribbon-banner p2-ribbon">Player 2</div>
+      <div class="mana-box">
+        <span class="mana-icon" title="Elixir/Mana">🩸</span>
+        <div class="mana-track">
+          <div id="p2-mana-fill" class="mana-fill p2-mana-fill" style="width: 100%;"></div>
+        </div>
+        <span id="p2-mana-text" class="mana-text">10 / 10</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive 60fps Mountain & Slingshots Canvas -->
+  <canvas id="game-canvas" width="1536" height="1024"></canvas>
+
+  <!-- Bottom Floating Dock: BOMBS & HIKERS matching slingshot.png -->
+  <nav id="dock-bottom">
+    <div class="dock-content">
+      <!-- BOMBS Category -->
+      <section class="dock-section">
+        <div class="category-tab">BOMBS</div>
+        <div id="dock-bombs" class="cards-row">
+          <!-- 4 Bomb Cards loaded dynamically -->
+        </div>
+      </section>
+
+      <!-- Vertical Divider -->
+      <div class="dock-divider"></div>
+
+      <!-- HIKERS Category -->
+      <section class="dock-section">
+        <div class="category-tab">HIKERS</div>
+        <div id="dock-hikers" class="cards-row">
+          <!-- 4 Hiker Cards loaded dynamically -->
+        </div>
+      </section>
+    </div>
+
+    <div id="dock-instruction">
+      🎯 Click card to load • Drag slingshot pouch backward to aim • Release to launch!
+    </div>
+  </nav>
+
+  <!-- Bottom Right Controls: RESET & Toggles -->
+  <aside id="controls-right">
+    <button id="btn-reset" class="btn-game btn-reset">RESET</button>
+    <button id="btn-ai-toggle" class="btn-game btn-toggle active">🤖 Bot: ON</button>
+    <button id="btn-audio-toggle" class="btn-game btn-toggle">🔊 Sound: ON</button>
+  </aside>
+
+  <!-- Victory Modal -->
+  <div id="victory-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="trophy-icon">🏆</div>
+      <h2 id="victory-title" class="victory-title">Summit Conquered!</h2>
+      <p id="victory-desc" class="victory-desc">A climber successfully reached the peak flag!</p>
+      <button id="btn-play-again" class="btn-primary">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modular Architecture Scripts -->
+<script src="js/config.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/state.js"></script>
+<script src="js/mountain.js"></script>
+<script src="js/slingshot.js"></script>
+<script src="js/units.js"></script>
+<script src="js/bombs.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/game.js"></script>
+
+</body>
+</html>
